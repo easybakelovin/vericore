@@ -1,9 +1,11 @@
-/*
-TODO: Description
-
-
-
-*/
+// ===================================================
+// Module:     screen.v
+// Version:    0.1.0
+// Author:     Oscar Mendez
+// Date:       2025-05-17
+// Description: SPI OLED driver for 128x64 screen
+// Notes:      Updated timing to support faster displays
+// ===================================================
 
 module screen #(
     parameter STARTUP_WAIT = 32'd10_000_000 // 1/3 of a second for a 27Mhz clock
@@ -88,8 +90,8 @@ module screen #(
     assign io_cs = cs;
 
     // ===== Load an Image =====
-    reg [7:0] screenBuffer [1023:0];
-    initial $readmemh("image.hex", screenBuffer);
+    // reg [7:0] screenBuffer [1023:0];
+    // initial $readmemh("image.hex", screenBuffer);
 
     // ===== STATE MACHINE =====
     always @(posedge clk) begin
@@ -162,8 +164,8 @@ module screen #(
 
             // Example image
             if (pixelCounter < 136)
-                // dataToSend <= 8'b01010111;
-                dataToSend <= screenBuffer[pixelCounter];
+                dataToSend <= 8'b01010111;
+                // dataToSend <= screenBuffer[pixelCounter];
             else
                 dataToSend <= 0;
         end

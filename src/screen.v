@@ -1,8 +1,7 @@
 /*
-TODO: Description
-
-
-
+This module is a simple SPI controller for the SSD1306 OLED display.
+It initializes the display and sends pixel data to it.
+The module uses a state machine to control the initialization process and data transfer.
 */
 
 module screen #(
