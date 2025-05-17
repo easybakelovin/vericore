@@ -1,0 +1,3 @@
+counter.v // module
+counter_tb.v // Testbench 
+# End of file
