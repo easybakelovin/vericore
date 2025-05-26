@@ -1,3 +1,15 @@
+ // ===================================================
+// Module:       uart_rx.v
+// Version:      0.2.0
+// Author:       Oscar Mendez
+// Date:         2025-05-26
+// General Desc: UART receiver module for receiving data from a UART source.
+// Version Desc: This version exposes the data and a byteReady signal to indicate when a byte has been received.
+// Notes:        Updated to support receiving data and indicating when a byte is ready.
+//
+// References: This code is based on Lushay Labs tutorial at https://learn.lushaylabs.com/
+// ===================================================
+
 module uart_rx #(
     /* 
     DELAY_FRAMES parameter specifies the number of clock cycles to wait for one UART bit period.
@@ -20,15 +32,14 @@ module uart_rx #(
 (
     input clk,
     input uart_rx,
-    output reg[5:0] led // Output to display the received data
+    output reg[byteReady], // Output to indicate that a byte has been received
+    output reg[7:0] dataIn // Output to display the received data
 );
     localparam HALF_DELAY_WAIT = (DELAY_FRAMES / 2); // Half of the delay frames for bit sampling/detection
 
-    reg [3:0] rxState = 0;
+    reg [3:0] rxState = 0; // State variable for the RX state machine
     reg [12:0] rxCounter = 0;
     reg [2:0] rxBitNumber = 0;
-    reg [7:0] dataIn = 0;
-    reg byteReady = 0;
 
 
     // ========== RX State Machine ========== //
@@ -82,15 +93,5 @@ module uart_rx #(
             end
         endcase
     end
-
-
-    // ========== LED Output ========== //
-    // Display the received data on the LEDs
-    always @(posedge clk) begin
-        if (byteReady) begin 
-            led <= dataIn[5:0];
-    end
-end
-
 
 endmodule
