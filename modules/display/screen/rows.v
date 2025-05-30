@@ -160,8 +160,6 @@ module toHex (
         // If the value is 10 or more, convert to ASCII 'A' to 'F'
         hexChar <= (value <= 9) ? 8'd48 + value : 8'd55 + value; // Convert to ASCII hex character
     end
-
-    
 endmodule
 
 // ========== Decimal Row Module ========== //
