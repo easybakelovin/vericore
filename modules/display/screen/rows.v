@@ -10,9 +10,7 @@
 // References: This code is based on Lushay Labs tutorial at https://learn.lushaylabs.com/tang-nano-9k-graphics/
 // ===================================================
 
-module uartTextRow #(
-    parameters
-) (
+module uartTextRow (
     input clk,
     input byteReady, // Signal indicating a byte has been received
     input [7:0] data,
@@ -51,11 +49,9 @@ module uartTextRow #(
                 end
                 state <= STATE_WAIT_FOR_NEXT_CHAR; // Go back to waiting for the next character
             end
-            default: 
-        endcase
-        
-    end 
-    
+        endcase     
+    end
+    assign outByte = textBuffer[({4'd0, outputCharIndex}<<3)+:8]; // Output the character at the specified index: 8 bit offset based on outputCharIndex
 endmodule
 
 
@@ -109,13 +105,13 @@ module hexDecRow (
     toHex hLo (
         .clk(clk),
         .value(hexLower),
-        .hexChar(outByteReg[3:0])
+        .hexChar(lowerHexChar)
     );
 
     toHex hHi (
         .clk(clk),
         .value(hexHigher),
-        .hexChar(outByteReg[7:4])
+        .hexChar(higherHexChar)
     );
 
     toDec dec(
@@ -124,7 +120,7 @@ module hexDecRow (
         .hundreds(decChar1),
         .tens(decChar2),
         .units(decChar3)
-    )
+    );
     wire [7:0] decChar1;
     wire [7:0] decChar2;
     wire [7:0] decChar3;
@@ -186,41 +182,44 @@ module toDec (
     localparam STATE_DONE = 3;   // Final state
 
     always @(posedge clk ) begin
-        STATE_START: begin
-            cachedValue <= value;  // Cache the value for conversion
-            stepCounter <= 0;      // Reset step counter
-            digits <= 0;           // Reset digits
-            state <= STATE_ADD3;   // Move to the next state
-        end
-        STATE_ADD3: begin
-            digits <= digits +
-                ((digits[3:0] >=5) ? 12'd3 : 12'd0) +   // Add 3 if the last digit is greater than or equal to 5
-                ((digits[7:4] >=5) ? 12'd48 : 12'd0) +  // Add 48 if the second digit is greater than or equal to 5
-                ((digits[11:8] >=5) ? 12'd768 : 12'd0); // Add 768 if the third digit is greater than or equal to 5
-            state <= STATE_SHIFT; // Move to the next state
-        end
-        STATE_SHIFT: begin
-            digits <= {digits[10:0], cachedValue[7]}; // Shift the digits left by one position
-            cachedValue <= {cachedValue[6:0], 1'b0};  // Shift the cached value left by one position
-            if (stepCounter == 7)
-                state <= STATE_DONE; // If 8 steps are done, move to the done state
-            else
-                stepCounter <= stepCounter + 1; // Increment the step counter
-                state <= STATE_ADD3;            // Go back to the add 3 state 
-        end
-        STATE_DONE: begin
-            hundreds <= (digits[11:8] + 8'd48); // Convert the hundreds digit to ASCII
-            tens <= (digits[7:4] + 8'd48);      // Convert the tens digit to ASCII
-            units <= (digits[3:0] + 8'd48);     // Convert the units digit to ASCII
-            state <= STATE_START;               // Reset the state machine
-        end
+        case(state)
+            STATE_START: begin
+                cachedValue <= value;  // Cache the value for conversion
+                stepCounter <= 0;      // Reset step counter
+                digits <= 0;           // Reset digits
+                state <= STATE_ADD3;   // Move to the next state
+            end
+            STATE_ADD3: begin
+                digits <= digits +
+                    ((digits[3:0] >=5) ? 12'd3 : 12'd0) +   // Add 3 if the last digit is greater than or equal to 5
+                    ((digits[7:4] >=5) ? 12'd48 : 12'd0) +  // Add 48 if the second digit is greater than or equal to 5
+                    ((digits[11:8] >=5) ? 12'd768 : 12'd0); // Add 768 if the third digit is greater than or equal to 5
+                state <= STATE_SHIFT; // Move to the next state
+            end
+            STATE_SHIFT: begin
+                digits <= {digits[10:0], cachedValue[7]}; // Shift the digits left by one position
+                cachedValue <= {cachedValue[6:0], 1'b0};  // Shift the cached value left by one position
+                if (stepCounter == 7)
+                    state <= STATE_DONE; // If 8 steps are done, move to the done state
+                else begin
+                    stepCounter <= stepCounter + 1; // Increment the step counter
+                    state <= STATE_ADD3;            // Go back to the add 3 state
+                end 
+            end
+            STATE_DONE: begin
+                hundreds <= (digits[11:8] + 8'd48); // Convert the hundreds digit to ASCII
+                tens <= (digits[7:4] + 8'd48);      // Convert the tens digit to ASCII
+                units <= (digits[3:0] + 8'd48);     // Convert the units digit to ASCII
+                state <= STATE_START;               // Reset the state machine
+            end
+        endcase
     end
     
 endmodule
 
 // ========== Progress Bar Row Module ========== //
 module progressRow (
-    clk,
+    input clk,
     input [7:0] value,        // Value to display in the progress bar
     input [9:0] pixelAddress, // Pixel address for the row
     output [7:0] outByte      // Output byte for the row
@@ -232,22 +231,23 @@ module progressRow (
     wire topRow;
 
     assign column = pixelAddress[6:0]; // Extract the column from the pixel address
-    assign !pixelAddress[7];
+    assign topRow = !pixelAddress[7];
+
 
     always @(posedge clk) begin
         if (topRow) begin
             case (column)
                 0, 127: begin
-                    bar = 8'b11000000; // Left border
-                    border = 8'b11000000; // Right border
+                    bar = 8'b11000000;
+                    border = 8'b110000000;
                 end
                 1, 126: begin
-                    bar = 8'b11100000; // Left border
-                    border = 8'b01100000; // Right border
+                    bar = 8'b11100000;
+                    border = 8'b01100000;
                 end
                 2, 125: begin
-                    bar = 8'b11100000; // Left border
-                    border = 8'b00110000; // Right border
+                    bar = 8'b11100000;
+                    border = 8'b00110000;
                 end
                 default: begin
                     bar = 8'b11110000;
@@ -259,26 +259,28 @@ module progressRow (
             case (column)
                 0, 127: begin
                     bar = 8'b00000011;
-                    border = 8'b00000011; // Left border
+                    border = 8'b00000011;
                 end
                 1, 126: begin
-                    bar = 8'b00000111; // Left border
-                    border = 8'b00000110; // Right border
-                end: 
+                    bar = 8'b00000111;
+                    border = 8'b00000110;
+                end
                 2, 125: begin
-                    bar = 8'b00001111; // Left border
-                    border = 8'b00001100; // Right border
+                    bar = 8'b00000111;
+                    border = 8'b00001100;
                 end
                 default: begin
-                    bar = 8'b00001111; // Fill the progress bar
-                    border = 8'b00001000; // Right border
+                    bar = 8'b00001111;
+                    border = 8'b00001000;
                 end
             endcase
         end
 
-        if (column < value[7:1]) 
-            outByte <= border;
+        if (column > value[7:1])
+            outByteReg <= border;
         else
-            outByte <= bar; // Fill the progress bar based on the value
+            outByteReg <= bar;
     end
+
+    assign outByte = outByteReg; // Assign the output byte
 endmodule

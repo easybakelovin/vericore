@@ -1,4 +1,4 @@
- // ===================================================
+// ===================================================
 // Module:       uart_rx.v
 // Version:      0.2.0
 // Author:       Oscar Mendez
@@ -32,7 +32,7 @@ module uart_rx #(
 (
     input clk,
     input uart_rx,
-    output reg[byteReady], // Output to indicate that a byte has been received
+    output reg byteReady, // Output to indicate that a byte has been received
     output reg[7:0] dataIn // Output to display the received data
 );
     localparam HALF_DELAY_WAIT = (DELAY_FRAMES / 2); // Half of the delay frames for bit sampling/detection

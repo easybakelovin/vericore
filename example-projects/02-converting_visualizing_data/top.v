@@ -19,15 +19,17 @@ module top
 )
 (
     input clk,     // System clock
+    input uart_rx,   // UART receive line for receiving data
     output ioSclk, // sLAVE clock for the screen
     output ioSdin, // sLAVE data in for the screen
     output ioCs,   // Chip select for the screen
     output ioDc,   // Data/Command select for the screen
-    output ioReset,// Reset signal for the screen
-    input uartRx   // UART receive line for receiving data
+    output ioReset// Reset signal for the screen
 );
+    localparam DELAY_FRAMES = 434; // Default value for 115200 baud on a 50 MHz clock
     wire [9:0] pixelAddress;
-    wire [7:0] textPixelData, chosenPixelData;
+    wire [7:0] textPixelData; 
+    wire [7:0] chosenPixelData;
     wire [5:0] charAddress;
     reg [7:0] charOutput;
 
@@ -36,29 +38,31 @@ module top
     wire [1:0] rowNumber;
 
     screen #(STARTUP_WAIT) scr(
-        clk, 
-        ioSclk, 
-        ioSdin, 
-        ioCs, 
-        ioDc, 
-        ioReset, 
-        pixelAddress,
-        chosenPixelData
+        // Inputs
+        .clk(clk),
+        .pixelData(chosenPixelData), // Pixel data from the text engine
+        // Outputs
+        .io_sclk(ioSclk),
+        .io_sdin(ioSdin),
+        .io_cs(ioCs),
+        .io_dc(ioDc),
+        .io_reset(ioReset),
+        .pixelAddress(pixelAddress)
     );
 
     textEngine te(
         clk,
         pixelAddress,
+        charOutput,
         textPixelData,
-        charAddress,
-        charOutput
+        charAddress
     );
 
     assign rowNumber = charAddress[5:4];
 
-    uart_rx #(.DELAY_FRAMES(434)) u (
+    uart_rx #(DELAY_FRAMES) u (
         clk,
-        uartRx,
+        uart_rx,
         uartByteReady, // Register output
         uartDataIn
     );
@@ -104,7 +108,7 @@ module top
     progressRow row4(
         .clk(clk),
         .value(counterValue),
-        .pixelAddress(charAddress[3:0]),
+        .pixelAddress(pixelAddress),
         .outByte(progressPixelData)
     );
     wire [7:0] progressPixelData;
@@ -126,7 +130,7 @@ endmodule
 // This module counts clock cycles and increments a counter value every 27 million cycles (approximately 1 second at 27 MHz).
 module counterM(
     input clk,
-    output reg [7:0] counterValue = 0,
+    output reg [7:0] counterValue = 0
 );
     reg [32:0] clockCounter = 0;
 
