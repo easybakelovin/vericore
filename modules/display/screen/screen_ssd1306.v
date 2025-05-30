@@ -1,21 +1,27 @@
 // ===================================================
-// Module:     screen.v
-// Version:    0.1.0
-// Author:     Oscar Mendez
-// Date:       2025-05-17
-// Description: SPI OLED driver for 128x64 screen
-// Notes:      Updated timing to support faster displays
+// Module:       screen_ssd1306.v
+// Version:      0.2.0
+// Author:       Oscar Mendez
+// Date:         2025-05-17
+// General Desc: SPI OLED driver for 128x64 screen on the ssd1306 controller.
+// Version Desc: This version allows the module to receive pixel data from an external source and display it on the screen.
+// Notes:        Updated support for receivable data.
+//
+// References: This code is based on Lushay Labs tutorial at https://learn.lushaylabs.com/tang-nano-9k-graphics/
 // ===================================================
 
 module screen #(
     parameter STARTUP_WAIT = 32'd10_000_000 // 1/3 of a second for a 27Mhz clock
-) (
+) 
+(
     input clk,
+    input [7:0] pixelData,
     output io_sclk,
     output io_sdin,
     output io_cs,
     output io_dc,
-    output io_reset
+    output io_reset,
+    output [9:0] pixelAddress
 );
     localparam STATE_INIT_POWER = 8'd0;
     localparam STATE_LOAD_INIT_CMD = 8'd1;
@@ -88,10 +94,7 @@ module screen #(
     assign io_dc = dc;
     assign io_reset = reset;
     assign io_cs = cs;
-
-    // ===== Load an Image =====
-    // reg [7:0] screenBuffer [1023:0];
-    // initial $readmemh("image.hex", screenBuffer);
+    assign pixelAddress = pixelCounter; // Connect pixel address to pixel counter
 
     // ===== STATE MACHINE =====
     always @(posedge clk) begin
@@ -161,13 +164,7 @@ module screen #(
             dc <= 1; // Set to 1 to signify sending of data, not command
             bitNumber <= 3'd7; // MSB index for sending our data.
             state <= STATE_SEND; // Move to Send Data State
-
-            // Example image
-            if (pixelCounter < 136)
-                dataToSend <= 8'b01010111;
-                // dataToSend <= screenBuffer[pixelCounter];
-            else
-                dataToSend <= 0;
+            dataToSend <= pixelData; // Load the pixel data to send
         end
       endcase
     end
